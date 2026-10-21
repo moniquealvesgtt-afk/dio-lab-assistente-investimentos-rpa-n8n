@@ -1,0 +1,288 @@
+{
+  "name": "workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8d0b11c1-bea6-4cbb-9695-c006419c5f8e",
+      "name": "Webhook",
+      "webhookId": "18f31a3e-a781-4f15-8673-32041bf08ad4"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3f945430-e532-4b88-b76a-a6850fc9b422",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "27de4ad6-dc63-4e19-91d1-3b0808a5a7dd",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook').first().json.body;\nconst clientes = Array.isArray(body) ? body : body.clientes;\nconst investimentos = $input.all().map(i => i.json);\n\nconst paraNumero = (s) =>\n  Number(String(s).replace(/[^\\d,]/g, '').replace(',', '.'));\n\nconst foco = {\n  Conservador: 'segurança e previsibilidade, com foco em renda fixa',\n  Moderado: 'um equilíbrio entre renda fixa e renda variável',\n  Arrojado: 'maior potencial de retorno, com ênfase em ações e ativos variáveis',\n};\n\nreturn clientes.map(c => {\n  const saldo = paraNumero(c['saldo']);\n  const perfil = c['perfil'];\n  const opcoes = investimentos.filter(i => i.perfil === perfil);\n  const possiveis = opcoes.filter(o => Number(o.minimo) <= saldo);\n\n  const lista = possiveis\n    .map(o => `• ${o.produto} (mínimo R$ ${o.minimo}, rentabilidade ${o.rentabilidade})`)\n    .join('\\n');\n\n  const mensagem = possiveis.length\n    ? `Olá, ${c.nome}! Com seu perfil ${perfil}, buscamos ${foco[perfil]}. Com seu saldo de ${c.saldo}, estas opções estão disponíveis:\\n${lista}`\n    : `Olá, ${c.nome}! Seu saldo atual (${c.saldo}) ainda não alcança o mínimo das opções do perfil ${perfil}. Que tal montar uma reserva até chegar lá?`;\n\n  return { json: { nome: c.nome, email: c.email, perfil, saldo: c.saldo, mensagem } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "b0b885e0-2890-4dfb-9684-24be3aed8b61",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Cliente: {{ $json.nome }}\nPerfil de investidor: {{ $json.perfil }}\nSaldo: {{ $json.saldo }}\n\nOpções de investimento disponíveis para ele:\n{{ $json.mensagem }}\n\nEscreva uma mensagem curta (até 5 linhas), cordial e personalizada, recomendando as opções mais adequadas ao saldo e ao perfil.",
+        "options": {
+          "systemMessage": "Você é um assistente de investimentos de um banco. Escreva em português do Brasil, com tom amigável e profissional. Não prometa retornos e inclua um aviso breve de que rentabilidade passada não garante resultado futuro. Use apenas as opções fornecidas, sem inventar produtos."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "a4d8f2c1-6a9d-4f52-90d9-166a5369fce0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-lite-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        968,
+        232
+      ],
+      "id": "2dd9a970-04b5-4ce5-a110-6edb37eef925",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SLzasV4pQ9EeYxrT",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db74be2c-b13d-4a17-8801-c7a826805a17",
+              "name": "nome",
+              "value": "={{ $('Code in JavaScript').item.json.nome }}",
+              "type": "string"
+            },
+            {
+              "id": "119e2058-6df0-40ca-8523-7b35cdf0a78a",
+              "name": "email",
+              "value": "={{ $('Code in JavaScript').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "17a487eb-a1f5-4be8-afb5-8ca2156e8455",
+              "name": "perfil",
+              "value": "={{ $('Code in JavaScript').item.json.perfil }}",
+              "type": "string"
+            },
+            {
+              "id": "9af3d446-cf4b-495f-b3ff-b90f7ff4d819",
+              "name": "mensagem_ia",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "6b8bc1cb-af25-48c0-881f-e06382b7eff5",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1472,
+        -96
+      ],
+      "id": "a219434a-5a53-433d-925c-893d9407f097",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Code in JavaScript').item.json.email }}",
+        "subject": "=Sua recomendação de investimentos, {{ $('Code in JavaScript').item.json.nome }}",
+        "emailType": "text",
+        "message": "={{ $('Code in JavaScript').item.json.mensagem }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        96
+      ],
+      "id": "c3e9f8e5-1945-476d-ae49-4b2f102cc767",
+      "name": "Send a message",
+      "webhookId": "3504ff35-88d3-4fca-abb5-e718b4636c4f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gCzVsTvLyM7jlLT7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "68d43445-25fb-4706-861e-0134e7bd32fb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ec4c6bf1e8cfbe5f4900462098c654f73ad76b4d89f161c870a2d7ddb945792e"
+  },
+  "nodeGroups": [],
+  "id": "WCamKuNYUhw8Y8X9",
+  "tags": []
+}
