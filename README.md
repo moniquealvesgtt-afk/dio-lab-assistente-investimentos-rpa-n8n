@@ -64,7 +64,6 @@ Pipeline de automação que extrai clientes de uma página web com Python (RPA),
 
 - **Test URL x Production URL:** a Test URL só funciona após clicar em *Listen for test event*, e a de produção só com o workflow ativo. Confundir as duas gera erro 404.
 - **Respond to Webhook:** o nó Webhook precisa estar configurado em *Using 'Respond to Webhook' Node*; caso contrário o N8N retorna erro (500).
-- **Cota do Gemini:** a camada gratuita limita as requisições por modelo. Durante os testes, usei poucos clientes (`clientes[:3]`) e só rodei a base completa na execução final.
 - **Timeout:** a geração das mensagens para todos os clientes demora; foi necessário aumentar o timeout da requisição no Python.
 
 ## Referências
